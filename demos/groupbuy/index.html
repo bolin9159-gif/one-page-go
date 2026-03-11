@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fruitbox Collective — 社區團購</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;1,400&family=Noto+Serif+TC:wght@300;400;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --cream:   #fdf6ee;
+    --warm:    #f5e6d3;
+    --peach:   #f7d8a0;
+    --orange:  #e8a850;
+    --amber:   #c97d30;
+    --brown:   #7a4f3a;
+    --text:    #4a3428;
+    --muted:   #9c7b6e;
+    --white:   #fffcf8;
+    --shadow:  rgba(122,79,58,0.12);
+    --green:   #7dba6a;
+    --greenBg: #e8f5e9;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--cream);
+    font-family: 'Noto Serif TC', serif;
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(247,216,160,0.3) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(245,230,211,0.4) 0%, transparent 50%),
+      radial-gradient(circle at 60% 10%, rgba(253,246,238,0.5) 0%, transparent 40%);
+    pointer-events: none;
+  }
+
+  header {
+    position: relative; z-index: 10;
+    text-align: center;
+    padding: 2rem 1.5rem 1.2rem;
+    background: linear-gradient(180deg, var(--warm) 0%, transparent 100%);
+  }
+
+  .logo-wrap { display: inline-flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+  .logo-icon { font-size: 2rem; line-height: 1; animation: float 3s ease-in-out infinite; }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+  .logo-name { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 500; color: var(--brown); }
+  .logo-sub  { font-size: 0.75rem; color: var(--muted); letter-spacing: 0.15em; }
+
+  .deco-line {
+    margin-top: 0.8rem;
+    font-size: 0.7rem; color: var(--orange); letter-spacing: 0.3em;
+  }
+
+  .main { position: relative; z-index: 5; max-width: 480px; margin: 0 auto; padding: 0 1.2rem 3rem; }
+
+  .section-title { text-align: center; font-size: 1.1rem; margin: 1.5rem 0 1rem; color: var(--brown); }
+
+  /* ── 團購卡片 ── */
+  .campaign-card {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 16px var(--shadow);
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+    animation: fadeUp 0.5s ease both;
+  }
+  .campaign-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px var(--shadow); }
+  .campaign-card.selected { border: 2px solid var(--orange); }
+
+  .campaign-img { font-size: 2.5rem; text-align: center; margin-bottom: 0.6rem; }
+  .campaign-img img { width: 100%; border-radius: 10px; }
+  .campaign-name { font-weight: 600; font-size: 1rem; margin-bottom: 0.3rem; }
+  .campaign-desc { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.5rem; }
+  .campaign-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; }
+  .campaign-price { font-size: 1.1rem; color: var(--amber); font-weight: 600; }
+  .campaign-status {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+  .campaign-status.open { background: var(--greenBg); color: #2e7d32; }
+  .campaign-status.reached { background: #e3f2fd; color: #1565c0; }
+
+  /* ── 進度條 ── */
+  .progress-wrap { margin-bottom: 0.5rem; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.3rem; }
+  .progress-bar {
+    height: 8px;
+    background: var(--warm);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--orange), var(--amber));
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+
+  /* ── 倒數計時 ── */
+  .countdown-badge {
+    display: inline-block;
+    background: var(--warm);
+    color: var(--brown);
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+  }
+  .countdown-badge.urgent { background: #fce4e4; color: #7a3a3a; }
+
+  /* ── 數量選擇 ── */
+  .qty-section {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 16px var(--shadow);
+    animation: fadeUp 0.5s ease both;
+  }
+  .qty-section label { display: block; font-size: 0.85rem; margin-bottom: 0.6rem; color: var(--brown); }
+  .qty-control {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    justify-content: center;
+  }
+  .qty-btn {
+    width: 38px; height: 38px;
+    border: 1px solid var(--warm);
+    border-radius: 50%;
+    background: var(--cream);
+    font-size: 1.2rem;
+    color: var(--text);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s;
+  }
+  .qty-btn:hover { background: var(--peach); }
+  .qty-display {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--brown);
+    min-width: 40px;
+    text-align: center;
+  }
+  .qty-hint { font-size: 0.75rem; color: var(--muted); text-align: center; margin-top: 0.5rem; }
+
+  /* ── 訂單摘要 ── */
+  .order-summary {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 16px var(--shadow);
+    animation: fadeUp 0.5s ease both;
+  }
+  .summary-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.6rem; color: var(--brown); }
+  .summary-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  .summary-total { border-top: 1px solid var(--warm); padding-top: 0.5rem; margin-top: 0.5rem; font-weight: 600; color: var(--amber); }
+
+  /* ── Email 驗證 ── */
+  .verify-section {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 1.2rem;
+    box-shadow: 0 4px 16px var(--shadow);
+    margin-bottom: 1rem;
+    animation: fadeUp 0.5s ease both;
+  }
+  .verify-row { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; }
+  .verify-row input { flex: 1; }
+  .verify-btn {
+    padding: 0.55rem 0.8rem;
+    border: none;
+    border-radius: 10px;
+    background: var(--orange);
+    color: white;
+    font-family: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.3s;
+  }
+  .verify-btn:hover { background: var(--amber); }
+  .verify-btn:disabled { background: var(--muted); cursor: not-allowed; }
+  .verify-status { font-size: 0.75rem; margin-top: 0.3rem; }
+
+  /* ── 表單 ── */
+  .form-section {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 1.2rem;
+    box-shadow: 0 4px 16px var(--shadow);
+    margin-bottom: 1.5rem;
+    animation: fadeUp 0.5s ease both;
+  }
+  .form-section label { display: block; font-size: 0.8rem; margin-bottom: 0.3rem; color: var(--brown); }
+  .form-section input, .form-section textarea {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--warm);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    color: var(--text);
+    background: var(--cream);
+    margin-bottom: 0.8rem;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+  .form-section input:focus, .form-section textarea:focus { border-color: var(--orange); }
+  .form-section textarea { height: 70px; resize: vertical; }
+
+  /* ── 送出按鈕 ── */
+  .submit-btn {
+    width: 100%;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--orange), var(--amber));
+    color: white;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.3s;
+    letter-spacing: 0.05em;
+  }
+  .submit-btn:hover { opacity: 0.9; }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── 成功畫面 ── */
+  .success-screen {
+    display: none;
+    position: relative; z-index: 5;
+    max-width: 480px; margin: 0 auto; padding: 3rem 1.5rem;
+    text-align: center;
+  }
+  .success-icon { font-size: 3rem; animation: pop 0.6s ease; }
+  @keyframes pop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+  .success-title { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--brown); margin: 0.8rem 0 0.5rem; }
+  .success-msg { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.2rem; }
+  .success-badge {
+    display: inline-block;
+    background: var(--warm);
+    padding: 0.5rem 1.2rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: var(--brown);
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+  }
+  .new-order-btn {
+    padding: 0.7rem 2rem;
+    border: 2px solid var(--orange);
+    border-radius: 14px;
+    background: transparent;
+    color: var(--orange);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .new-order-btn:hover { background: var(--orange); color: white; }
+
+  /* ── Loading / Error ── */
+  .loading-wrap { text-align: center; padding: 2rem; }
+  .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--warm); border-top-color: var(--orange); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-msg { background: #fce4e4; color: #7a3a3a; padding: 0.6rem 1rem; border-radius: 10px; font-size: 0.8rem; margin-bottom: 1rem; text-align: center; }
+
+  .hidden { display: none !important; }
+
+  footer {
+    position: relative; z-index: 5;
+    text-align: center; padding: 1.5rem;
+    font-size: 0.7rem; color: var(--muted);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <div class="logo-icon">🍊</div>
+    <div class="logo-name">Fruitbox Collective</div>
+    <div class="logo-sub">COMMUNITY GROUP BUY</div>
+  </div>
+  <div class="deco-line">✦ 新鮮直送 ✦</div>
+</header>
+
+<!-- ── 主頁面 ── -->
+<div class="main" id="shop-view">
+  <h2 class="section-title">🍊 開團中</h2>
+  <div id="campaigns-container">
+    <div class="loading-wrap"><div class="spinner"></div></div>
+  </div>
+
+  <!-- 數量選擇 -->
+  <div id="qty-section" class="qty-section hidden">
+    <label>📦 選擇數量</label>
+    <div class="qty-control">
+      <button class="qty-btn" onclick="changeQty(-1)">−</button>
+      <div class="qty-display" id="qty-display">1</div>
+      <button class="qty-btn" onclick="changeQty(1)">+</button>
+    </div>
+    <div class="qty-hint" id="qty-hint"></div>
+  </div>
+
+  <!-- 訂單摘要 -->
+  <div id="order-summary" class="order-summary hidden">
+    <div class="summary-title">📋 訂單摘要</div>
+    <div class="summary-row"><span>品項</span><span id="sum-name"></span></div>
+    <div class="summary-row"><span>單價</span><span id="sum-price"></span></div>
+    <div class="summary-row"><span>數量</span><span id="sum-qty"></span></div>
+    <div class="summary-row summary-total"><span>小計</span><span id="sum-total"></span></div>
+  </div>
+
+  <!-- Email 驗證 -->
+  <div id="verify-section" class="verify-section hidden">
+    <label>📧 Email 驗證</label>
+    <div class="verify-row">
+      <input type="email" id="email" placeholder="your@email.com" />
+      <button class="verify-btn" id="send-code-btn" onclick="sendCode()">發送驗證碼</button>
+    </div>
+    <div id="code-row" class="verify-row hidden">
+      <input type="text" id="verify-code" placeholder="輸入 6 位驗證碼" maxlength="6" />
+      <button class="verify-btn" id="verify-btn" onclick="verifyEmail()">驗證</button>
+    </div>
+    <div class="verify-status" id="verify-status"></div>
+  </div>
+
+  <!-- 表單 -->
+  <div id="form-section" class="form-section hidden">
+    <label>姓名</label>
+    <input type="text" id="name" placeholder="您的姓名" />
+    <label>電話</label>
+    <input type="tel" id="phone" placeholder="0912-345-678" />
+    <label>備註（選填）</label>
+    <textarea id="note" placeholder="有什麼需要備註的嗎？"></textarea>
+    <button class="submit-btn" id="submit-btn" onclick="submitOrder()">🍊 確認跟團</button>
+  </div>
+
+  <div id="error-msg" class="error-msg hidden"></div>
+</div>
+
+<!-- ── 成功畫面 ── -->
+<div class="success-screen" id="success-screen">
+  <div class="success-icon">🎉</div>
+  <h2 class="success-title">跟團成功！</h2>
+  <p class="success-msg">感謝您的參與，團購達標後會通知您付款 🍊</p>
+  <div class="success-badge" id="success-id"></div>
+  <br/>
+  <button class="new-order-btn" onclick="resetPage()">再次跟團</button>
+</div>
+
+<footer>Fruitbox Collective Sample — Powered by One Page Go</footer>
+
+<script>
+// ── 設定你的 Apps Script 網址 ──────────────────────────
+const API_URL = "YOUR_APPS_SCRIPT_URL";
+
+const FRUIT_EMOJI = ["🍊","🍎","🍇","🥭","🍑","🍓","🫐","🍌"];
+
+let campaigns = [];
+let selectedCampaign = null;
+let qty = 1;
+let emailVerified = false;
+let verifiedEmail = '';
+let countdownTimers = [];
+
+// ── 載入團購活動 ─────────────────────────────────────
+async function loadCampaigns() {
+  try {
+    const res  = await fetch(`${API_URL}?action=getCampaigns`);
+    const text = await res.text();
+    const data = JSON.parse(text);
+    campaigns = data.campaigns || [];
+    renderCampaigns();
+  } catch (err) {
+    document.getElementById('campaigns-container').innerHTML =
+      '<div class="loading-wrap">目前暫無開團活動，請稍後再來</div>';
+  }
+}
+
+function renderCampaigns() {
+  const container = document.getElementById('campaigns-container');
+  if (!campaigns.length) {
+    container.innerHTML = '<div class="loading-wrap">目前暫無開團活動，請稍後再來</div>';
+    return;
+  }
+
+  // 清除舊的倒數計時
+  countdownTimers.forEach(t => clearInterval(t));
+  countdownTimers = [];
+
+  container.innerHTML = campaigns.map((c, i) => {
+    const emoji = FRUIT_EMOJI[i % FRUIT_EMOJI.length];
+    const imgHtml = c.image_url
+      ? `<img src="${c.image_url}" alt="${c.name}" />`
+      : emoji;
+    const pct = c.min_qty > 0 ? Math.min(Math.round((c.current_qty / c.min_qty) * 100), 100) : 0;
+    const statusLabel = c.status === 'reached' ? '已達標' : '開團中';
+    const statusClass = c.status === 'reached' ? 'reached' : 'open';
+    const remaining = c.max_qty - c.current_qty;
+
+    return `
+      <div class="campaign-card" id="camp-${c.id}" onclick="selectCampaign('${c.id}')" style="animation-delay:${i*0.08}s">
+        <div class="campaign-img">${imgHtml}</div>
+        <div class="campaign-name">${c.name}</div>
+        <div class="campaign-desc">${c.description || ''}</div>
+        <div class="campaign-meta">
+          <span class="campaign-price">$${c.price}/份</span>
+          <span class="campaign-status ${statusClass}">${statusLabel}</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span>已跟團 ${c.current_qty}/${c.min_qty} 份</span>
+            <span>還可跟 ${remaining} 份</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.4rem;">
+          <span class="countdown-badge" id="countdown-${c.id}">⏳ 計算中...</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  // 啟動倒數計時
+  campaigns.forEach(c => startCountdown(c.id, c.deadline));
+}
+
+function startCountdown(id, deadline) {
+  const el = document.getElementById('countdown-' + id);
+  if (!el) return;
+
+  const target = new Date(deadline + 'T23:59:59').getTime();
+
+  function update() {
+    const now  = Date.now();
+    const diff = target - now;
+
+    if (diff <= 0) {
+      el.textContent = '已截止';
+      el.classList.add('urgent');
+      return;
+    }
+
+    const days  = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins  = Math.floor((diff % 3600000) / 60000);
+
+    if (days > 0) {
+      el.textContent = `⏳ 剩餘 ${days} 天 ${hours} 小時`;
+    } else if (hours > 0) {
+      el.textContent = `⏳ 剩餘 ${hours} 小時 ${mins} 分`;
+      el.classList.add('urgent');
+    } else {
+      el.textContent = `⏳ 剩餘 ${mins} 分鐘`;
+      el.classList.add('urgent');
+    }
+  }
+
+  update();
+  const timer = setInterval(update, 60000);
+  countdownTimers.push(timer);
+}
+
+// ── 選擇團購 ────────────────────────────────────────
+function selectCampaign(id) {
+  selectedCampaign = campaigns.find(c => String(c.id) === String(id));
+  if (!selectedCampaign) return;
+
+  // 標記選中
+  document.querySelectorAll('.campaign-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('camp-' + id).classList.add('selected');
+
+  // 重設數量
+  qty = 1;
+  const maxAvail = selectedCampaign.max_qty - selectedCampaign.current_qty;
+  document.getElementById('qty-display').textContent = qty;
+  document.getElementById('qty-hint').textContent = `每人可跟 1 ~ ${maxAvail} 份`;
+
+  // 顯示數量選擇
+  document.getElementById('qty-section').classList.remove('hidden');
+  document.getElementById('order-summary').classList.add('hidden');
+  document.getElementById('verify-section').classList.add('hidden');
+  document.getElementById('form-section').classList.add('hidden');
+
+  updateSummary();
+
+  document.getElementById('qty-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function changeQty(delta) {
+  if (!selectedCampaign) return;
+  const maxAvail = selectedCampaign.max_qty - selectedCampaign.current_qty;
+  const newQty = qty + delta;
+  if (newQty < 1 || newQty > maxAvail) return;
+  qty = newQty;
+  document.getElementById('qty-display').textContent = qty;
+  updateSummary();
+}
+
+function updateSummary() {
+  if (!selectedCampaign) return;
+
+  document.getElementById('sum-name').textContent = selectedCampaign.name;
+  document.getElementById('sum-price').textContent = '$' + selectedCampaign.price;
+  document.getElementById('sum-qty').textContent = qty + ' 份';
+  document.getElementById('sum-total').textContent = '$' + (selectedCampaign.price * qty);
+
+  document.getElementById('order-summary').classList.remove('hidden');
+  document.getElementById('verify-section').classList.remove('hidden');
+
+  if (emailVerified) {
+    document.getElementById('form-section').classList.remove('hidden');
+  }
+}
+
+// ── Email 驗證 ──────────────────────────────────────
+async function sendCode() {
+  const email = document.getElementById('email').value.trim();
+  if (!email) { showError('請輸入 Email'); return; }
+
+  const btn = document.getElementById('send-code-btn');
+  btn.disabled = true;
+  btn.textContent = '發送中…';
+  hideError();
+
+  try {
+    // 先檢查會員狀態
+    const checkRes = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'checkMember', email })
+    });
+    const checkData = JSON.parse(await checkRes.text());
+
+    if (checkData.blocked) { showError('此 Email 已被停用，請聯繫店家'); btn.disabled = false; btn.textContent = '發送驗證碼'; return; }
+    if (checkData.hasActiveOrder) { showError('您有未完成的訂單，完成後才能再次跟團'); btn.disabled = false; btn.textContent = '發送驗證碼'; return; }
+
+    // 發送驗證碼
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'sendVerifyCode', email })
+    });
+    const data = JSON.parse(await res.text());
+
+    if (data.success) {
+      document.getElementById('code-row').classList.remove('hidden');
+      document.getElementById('verify-status').textContent = '驗證碼已寄出，請查看信箱';
+      document.getElementById('verify-status').style.color = 'var(--green)';
+      let sec = 60;
+      btn.textContent = `${sec}s`;
+      const timer = setInterval(() => {
+        sec--;
+        btn.textContent = `${sec}s`;
+        if (sec <= 0) { clearInterval(timer); btn.disabled = false; btn.textContent = '重新發送'; }
+      }, 1000);
+    } else {
+      showError(data.error || '發送失敗');
+      btn.disabled = false;
+      btn.textContent = '發送驗證碼';
+    }
+  } catch (err) {
+    showError('API 連線失敗');
+    btn.disabled = false;
+    btn.textContent = '發送驗證碼';
+  }
+}
+
+async function verifyEmail() {
+  const email = document.getElementById('email').value.trim();
+  const code  = document.getElementById('verify-code').value.trim();
+  if (!code) { showError('請輸入驗證碼'); return; }
+
+  const btn = document.getElementById('verify-btn');
+  btn.disabled = true;
+  btn.textContent = '驗證中…';
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'verifyCode', email, code })
+    });
+    const data = JSON.parse(await res.text());
+
+    if (data.success) {
+      emailVerified = true;
+      verifiedEmail = email;
+      showVerified();
+    } else {
+      showError(data.error || '驗證失敗');
+      btn.disabled = false;
+      btn.textContent = '驗證';
+    }
+  } catch (err) {
+    showError('API 連線失敗');
+    btn.disabled = false;
+    btn.textContent = '驗證';
+  }
+}
+
+function showVerified() {
+  document.getElementById('verify-status').textContent = '✅ 驗證成功';
+  document.getElementById('verify-status').style.color = 'var(--green)';
+  document.getElementById('email').disabled = true;
+  document.getElementById('verify-code').disabled = true;
+  document.getElementById('verify-btn').disabled = true;
+  document.getElementById('verify-btn').textContent = '已驗證';
+  document.getElementById('send-code-btn').classList.add('hidden');
+  document.getElementById('code-row').classList.add('hidden');
+  document.getElementById('form-section').classList.remove('hidden');
+}
+
+// ── 送出訂單 ────────────────────────────────────────
+async function submitOrder() {
+  const name  = document.getElementById('name').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const note  = document.getElementById('note').value.trim();
+
+  hideError();
+  if (!name)  { showError('請輸入姓名'); return; }
+  if (!phone) { showError('請輸入電話'); return; }
+  const phoneClean = phone.replace(/[-\s]/g, '');
+  if (!/^09\d{8}$/.test(phoneClean)) { showError('請輸入有效的手機號碼（09 開頭，共 10 碼）'); return; }
+  if (!selectedCampaign) { showError('請選擇團購活動'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = '送出中…';
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'submitGroupOrder',
+        email: verifiedEmail,
+        name,
+        phone,
+        campaign_id: String(selectedCampaign.id),
+        qty,
+        note
+      })
+    });
+    const data = JSON.parse(await res.text());
+
+    if (data.success) {
+      document.getElementById('shop-view').style.display = 'none';
+      document.getElementById('success-screen').style.display = 'block';
+      document.getElementById('success-id').textContent = '訂單編號：' + data.orderId;
+    } else {
+      showError(data.error || '跟團失敗');
+      btn.disabled = false;
+      btn.textContent = '🍊 確認跟團';
+    }
+  } catch (err) {
+    showError('API 連線失敗');
+    btn.disabled = false;
+    btn.textContent = '🍊 確認跟團';
+  }
+}
+
+// ── 重置 ────────────────────────────────────────────
+function resetPage() {
+  selectedCampaign = null;
+  qty = 1;
+  emailVerified = false;
+  verifiedEmail = '';
+
+  document.getElementById('success-screen').style.display = 'none';
+  document.getElementById('shop-view').style.display = 'block';
+
+  document.querySelectorAll('.campaign-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('qty-section').classList.add('hidden');
+  document.getElementById('order-summary').classList.add('hidden');
+  document.getElementById('verify-section').classList.add('hidden');
+  document.getElementById('form-section').classList.add('hidden');
+
+  // 重建驗證區
+  document.getElementById('email').disabled = false;
+  document.getElementById('email').value = '';
+  document.getElementById('verify-code').disabled = false;
+  document.getElementById('verify-code').value = '';
+  document.getElementById('send-code-btn').classList.remove('hidden');
+  document.getElementById('send-code-btn').disabled = false;
+  document.getElementById('send-code-btn').textContent = '發送驗證碼';
+  document.getElementById('verify-btn').disabled = false;
+  document.getElementById('verify-btn').textContent = '驗證';
+  document.getElementById('code-row').classList.add('hidden');
+  document.getElementById('verify-status').textContent = '';
+
+  document.getElementById('name').value = '';
+  document.getElementById('phone').value = '';
+  document.getElementById('note').value = '';
+  document.getElementById('submit-btn').disabled = false;
+  document.getElementById('submit-btn').textContent = '🍊 確認跟團';
+  document.getElementById('qty-display').textContent = '1';
+
+  hideError();
+  loadCampaigns();
+}
+
+// ── 工具 ────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+function hideError() {
+  document.getElementById('error-msg').classList.add('hidden');
+}
+
+// ── 啟動 ────────────────────────────────────────────
+loadCampaigns();
+</script>
+</body>
+</html>
