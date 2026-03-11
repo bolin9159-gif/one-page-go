@@ -588,6 +588,21 @@
       </div>
 
       <div class="field">
+        <label>GitHub 網頁託管方式</label>
+        <select id="githubHosting">
+          <option value="onepagego" selected>由 One Page Go 託管（推薦，免操作）</option>
+          <option value="self">使用我自己的 GitHub 帳號</option>
+        </select>
+        <div class="hint">預設由我們託管，您不需要 GitHub 帳號。若選擇自行託管，交付時會協助設定。</div>
+      </div>
+
+      <div class="field" id="githubUsernameField" style="display:none;">
+        <label>GitHub 帳號名稱</label>
+        <input type="text" id="githubUsername" placeholder="例如：my-github-username" />
+        <div class="hint">交付時會邀請您為 collaborator，協助部署到您的 GitHub Pages。</div>
+      </div>
+
+      <div class="field">
         <label>需求描述</label>
         <textarea id="requirements" placeholder="請簡述您的需求，例如想要的風格、功能等..."></textarea>
       </div>
@@ -690,6 +705,12 @@
         我們會在 <strong>1–2 個工作天</strong>內與您聯繫，<br />
         開始為您打造專屬網頁。
       </p>
+      <div style="background:var(--cream);border:1.5px solid var(--blush);border-radius:10px;padding:1rem;text-align:left;font-size:0.8rem;color:var(--text);line-height:1.7;margin-bottom:1.2rem;">
+        <strong style="color:var(--brown);">📋 接下來您需要準備：</strong><br/>
+        1. 一個 Google 帳號（用來存放您的訂單資料）<br/>
+        2. 我們會提供設定指南，幫您在自己的帳號建立 Google Sheet<br/>
+        3. 所有資料都存在您自己的帳號，我們不會保留任何副本
+      </div>
       <div class="inquiry-id" id="successInquiryId"></div>
       <br /><br />
       <a href="../index.html" class="btn btn-secondary" style="text-decoration:none; display:inline-block; width:auto; padding:0.7rem 2rem;">返回首頁</a>
@@ -845,6 +866,13 @@
 本合約如有爭議，雙方同意以台灣台北地方法院為第一審管轄法院。`;
   }
 
+  // ── GitHub 託管切換 ──
+  document.getElementById('githubHosting').addEventListener('change', function() {
+    const field = document.getElementById('githubUsernameField');
+    field.style.display = this.value === 'self' ? 'block' : 'none';
+    if (this.value !== 'self') document.getElementById('githubUsername').value = '';
+  });
+
   // ── Email 驗證 ──
   document.getElementById('btnSendCode').addEventListener('click', async () => {
     clearError(1);
@@ -949,6 +977,8 @@
     const businessName = document.getElementById('businessName').value.trim();
     const templateType = document.getElementById('templateType').value;
     const requirements = document.getElementById('requirements').value.trim();
+    const githubHosting = document.getElementById('githubHosting').value;
+    const githubUsername = document.getElementById('githubUsername').value.trim();
 
     // 驗證必填
     if (!name || !email || !phone || !businessName || !templateType) {
@@ -995,7 +1025,9 @@
           template_type: templateType,
           business_name: businessName,
           requirements,
-          budget: templateType
+          budget: templateType,
+          github_hosting: githubHosting,
+          github_username: githubUsername || ''
         })
       });
 
