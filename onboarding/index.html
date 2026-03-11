@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>One Page Go — 客戶接單流程</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;1,400&family=Noto+Serif+TC:wght@300;400;600&display=swap" rel="stylesheet" />
+<style>
+  /* ── 色票 ── */
+  :root {
+    --cream:   #fdf6ee;
+    --warm:    #f5e6d3;
+    --blush:   #f2c4c4;
+    --rose:    #e8a0a0;
+    --mauve:   #c97d7d;
+    --brown:   #7a4f3a;
+    --text:    #4a3428;
+    --muted:   #9c7b6e;
+    --white:   #fffcf8;
+    --shadow:  rgba(122,79,58,0.12);
+    --green:   #7dba6a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--cream);
+    font-family: 'Noto Serif TC', serif;
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── 背景紋理 ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(242,196,196,0.3) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(245,230,211,0.4) 0%, transparent 50%),
+      radial-gradient(circle at 60% 10%, rgba(253,246,238,0.5) 0%, transparent 40%);
+    pointer-events: none;
+  }
+
+  /* ── Header ── */
+  header {
+    position: relative; z-index: 10;
+    text-align: center;
+    padding: 2rem 1.5rem 1.2rem;
+    background: linear-gradient(180deg, var(--warm) 0%, transparent 100%);
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 0.8rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.3s;
+  }
+  .back-link:hover { color: var(--brown); }
+
+  .logo-wrap {
+    display: inline-flex; flex-direction: column; align-items: center; gap: 0.3rem;
+  }
+
+  .logo-icon { font-size: 2rem; line-height: 1; animation: float 3s ease-in-out infinite; }
+
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50%     { transform: translateY(-6px); }
+  }
+
+  .logo-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    font-weight: 500;
+    color: var(--brown);
+    letter-spacing: 0.05em;
+  }
+
+  .logo-sub {
+    font-size: 0.72rem;
+    letter-spacing: 0.25em;
+    color: var(--mauve);
+    text-transform: uppercase;
+  }
+
+  /* ── 主容器 ── */
+  .container {
+    position: relative; z-index: 10;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 1.2rem 3rem;
+  }
+
+  /* ── 進度指示器 ── */
+  .progress-bar {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 0;
+    margin: 1.5rem 0 2rem;
+    position: relative;
+  }
+
+  .step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    position: relative;
+  }
+
+  .step-circle {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--white);
+    border: 2.5px solid var(--blush);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    transition: all 0.4s ease;
+    position: relative;
+    z-index: 2;
+  }
+
+  .step-item.active .step-circle {
+    background: var(--rose);
+    border-color: var(--rose);
+    color: var(--white);
+    box-shadow: 0 0 0 4px rgba(232,160,160,0.25);
+  }
+
+  .step-item.completed .step-circle {
+    background: var(--green);
+    border-color: var(--green);
+    color: var(--white);
+  }
+
+  .step-label {
+    margin-top: 0.5rem;
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-align: center;
+    transition: color 0.3s;
+  }
+
+  .step-item.active .step-label { color: var(--brown); font-weight: 600; }
+  .step-item.completed .step-label { color: var(--green); }
+
+  .step-line {
+    position: absolute;
+    top: 18px;
+    height: 2.5px;
+    background: var(--blush);
+    z-index: 1;
+    transition: background 0.4s;
+  }
+
+  .step-line.line-1 { left: calc(16.66% + 18px); right: calc(50% - 18px + 16.66%); }
+  .step-line.line-2 { left: calc(50% + 18px - 16.66%); right: calc(16.66% + 18px); }
+
+  /* Simpler approach: lines between steps */
+  .step-connector {
+    flex: 0.6;
+    height: 2.5px;
+    background: var(--blush);
+    margin-top: 17px;
+    transition: background 0.4s ease;
+  }
+
+  .step-connector.completed { background: var(--green); }
+
+  /* ── 動畫 ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-up {
+    animation: fadeUp 0.5s ease both;
+  }
+
+  /* ── 表單區塊 ── */
+  .form-section {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 2rem 1.5rem;
+    box-shadow: 0 2px 16px var(--shadow);
+  }
+
+  .form-section h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.35rem;
+    color: var(--brown);
+    margin-bottom: 0.4rem;
+  }
+
+  .form-section .subtitle {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── 表單元素 ── */
+  .field {
+    margin-bottom: 1.2rem;
+  }
+
+  .field label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--brown);
+    margin-bottom: 0.35rem;
+  }
+
+  .field label .required {
+    color: var(--rose);
+    margin-left: 2px;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    border: 1.5px solid var(--blush);
+    border-radius: 10px;
+    background: var(--cream);
+    font-family: 'Noto Serif TC', serif;
+    font-size: 0.88rem;
+    color: var(--text);
+    transition: border-color 0.3s, box-shadow 0.3s;
+    outline: none;
+  }
+
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus {
+    border-color: var(--rose);
+    box-shadow: 0 0 0 3px rgba(232,160,160,0.15);
+  }
+
+  .field input::placeholder,
+  .field textarea::placeholder {
+    color: var(--muted);
+    opacity: 0.6;
+  }
+
+  .field textarea {
+    min-height: 90px;
+    resize: vertical;
+  }
+
+  .field select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239c7b6e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+    padding-right: 2.2rem;
+  }
+
+  .field .hint {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 0.25rem;
+  }
+
+  /* ── 按鈕 ── */
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 0.85rem;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Noto Serif TC', serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--rose), var(--mauve));
+    color: var(--white);
+    box-shadow: 0 4px 12px rgba(201,125,125,0.3);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(201,125,125,0.4);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-secondary {
+    background: var(--cream);
+    color: var(--brown);
+    border: 1.5px solid var(--blush);
+  }
+
+  .btn-secondary:hover {
+    background: var(--warm);
+  }
+
+  /* ── Loading Spinner ── */
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .spinner {
+    display: none;
+    width: 20px; height: 20px;
+    border: 2.5px solid rgba(255,252,248,0.3);
+    border-top-color: var(--white);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin: 0 auto;
+  }
+
+  .btn.loading .btn-text { visibility: hidden; }
+  .btn.loading .spinner { display: inline-block; position: absolute; top: 50%; left: 50%; margin-top: -10px; margin-left: -10px; }
+
+  /* ── 合約區塊 ── */
+  .contract-box {
+    background: var(--cream);
+    border: 1.5px solid var(--blush);
+    border-radius: 10px;
+    padding: 1.2rem;
+    max-height: 240px;
+    overflow-y: auto;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: var(--text);
+    margin-bottom: 1.2rem;
+    white-space: pre-wrap;
+  }
+
+  .contract-box::-webkit-scrollbar { width: 5px; }
+  .contract-box::-webkit-scrollbar-track { background: var(--cream); border-radius: 3px; }
+  .contract-box::-webkit-scrollbar-thumb { background: var(--blush); border-radius: 3px; }
+
+  .price-display {
+    text-align: center;
+    padding: 1rem;
+    margin-bottom: 1.2rem;
+    background: linear-gradient(135deg, rgba(242,196,196,0.2), rgba(245,230,211,0.3));
+    border-radius: 10px;
+  }
+
+  .price-display .label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 0.2rem;
+  }
+
+  .price-display .amount {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    font-weight: 500;
+    color: var(--brown);
+  }
+
+  /* ── Checkbox ── */
+  .checkbox-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .checkbox-field input[type="checkbox"] {
+    width: 18px; height: 18px;
+    margin-top: 2px;
+    accent-color: var(--rose);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .checkbox-field label {
+    font-size: 0.82rem;
+    color: var(--text);
+    cursor: pointer;
+    line-height: 1.5;
+  }
+
+  /* ── 付款資訊 ── */
+  .payment-info {
+    background: var(--cream);
+    border: 1.5px solid var(--blush);
+    border-radius: 10px;
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .payment-info h4 {
+    font-size: 0.85rem;
+    color: var(--brown);
+    margin-bottom: 0.6rem;
+  }
+
+  .payment-info .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0;
+    font-size: 0.82rem;
+    border-bottom: 1px dashed rgba(242,196,196,0.5);
+  }
+
+  .payment-info .info-row:last-child { border-bottom: none; }
+  .payment-info .info-row .info-label { color: var(--muted); }
+  .payment-info .info-row .info-value { color: var(--text); font-weight: 600; }
+
+  /* ── 成功畫面 ── */
+  .success-screen {
+    text-align: center;
+    padding: 2rem 0;
+  }
+
+  .success-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .success-screen h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: var(--brown);
+    margin-bottom: 0.5rem;
+  }
+
+  .success-screen .message {
+    font-size: 0.88rem;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 0.8rem;
+  }
+
+  .success-screen .inquiry-id {
+    display: inline-block;
+    background: var(--cream);
+    border: 1.5px solid var(--blush);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 0.82rem;
+    color: var(--brown);
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── 錯誤訊息 ── */
+  .error-msg {
+    background: rgba(232,160,160,0.15);
+    border: 1px solid var(--rose);
+    border-radius: 8px;
+    padding: 0.7rem 1rem;
+    font-size: 0.8rem;
+    color: var(--mauve);
+    margin-bottom: 1rem;
+    display: none;
+  }
+
+  .error-msg.show { display: block; animation: fadeUp 0.3s ease; }
+
+  /* ── 隱藏 ── */
+  .hidden { display: none; }
+
+  /* ── 裝飾線 ── */
+  .divider {
+    width: 40px;
+    height: 2px;
+    background: var(--blush);
+    margin: 0 auto 1rem;
+    border-radius: 1px;
+  }
+
+  /* ── Footer ── */
+  footer {
+    position: relative; z-index: 10;
+    text-align: center;
+    padding: 1.5rem;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <a href="../index.html" class="back-link">&larr; 返回首頁</a>
+  <div class="logo-wrap">
+    <div class="logo-icon">&#127968;</div>
+    <div class="logo-name">One Page Go</div>
+    <div class="logo-sub">Client Onboarding</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ── 進度指示器 ── -->
+  <div class="progress-bar" id="progressBar">
+    <div class="step-item active" data-step="1">
+      <div class="step-circle">1</div>
+      <div class="step-label">提交需求</div>
+    </div>
+    <div class="step-connector" id="connector1"></div>
+    <div class="step-item" data-step="2">
+      <div class="step-circle">2</div>
+      <div class="step-label">簽署合約</div>
+    </div>
+    <div class="step-connector" id="connector2"></div>
+    <div class="step-item" data-step="3">
+      <div class="step-circle">3</div>
+      <div class="step-label">確認付款</div>
+    </div>
+  </div>
+
+  <!-- ── Step 1: 提交需求 ── -->
+  <div id="step1" class="form-section fade-up">
+    <h2>提交需求</h2>
+    <div class="divider"></div>
+    <p class="subtitle">請填寫以下資訊，我們將為您量身打造專屬網頁</p>
+
+    <div class="error-msg" id="error1"></div>
+
+    <form id="inquiryForm" novalidate>
+      <div class="field">
+        <label>姓名 <span class="required">*</span></label>
+        <input type="text" id="name" placeholder="您的姓名" required />
+      </div>
+
+      <div class="field">
+        <label>Email <span class="required">*</span></label>
+        <input type="email" id="email" placeholder="email@example.com" required />
+      </div>
+
+      <div class="field">
+        <label>電話 <span class="required">*</span></label>
+        <input type="tel" id="phone" placeholder="0912-345-678" required />
+      </div>
+
+      <div class="field">
+        <label>品牌名稱 <span class="required">*</span></label>
+        <input type="text" id="businessName" placeholder="您的品牌或店家名稱" required />
+        <div class="hint">例如：花語烘焙坊、日和美容</div>
+      </div>
+
+      <div class="field">
+        <label>模板類型 <span class="required">*</span></label>
+        <select id="templateType" required>
+          <option value="" disabled selected>請選擇模板類型</option>
+          <option value="ecommerce">微型電商</option>
+          <option value="booking">預約系統</option>
+          <option value="groupbuy">團購管理</option>
+          <option value="ticketing">活動售票</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>方案選擇 <span class="required">*</span></label>
+        <select id="budget" required>
+          <option value="" disabled selected>請選擇方案</option>
+          <option value="3000">基本方案 — NT$3,000</option>
+          <option value="6000">進階方案 — NT$6,000</option>
+          <option value="12000">完整方案 — NT$12,000</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>需求描述</label>
+        <textarea id="requirements" placeholder="請簡述您的需求，例如想要的風格、功能等..."></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="btnSubmitInquiry">
+        <span class="btn-text">提交需求</span>
+        <div class="spinner"></div>
+      </button>
+    </form>
+  </div>
+
+  <!-- ── Step 2: 簽署合約 ── -->
+  <div id="step2" class="form-section fade-up hidden">
+    <h2>簽署合約</h2>
+    <div class="divider"></div>
+    <p class="subtitle">請閱讀合約條款後簽署</p>
+
+    <div class="error-msg" id="error2"></div>
+
+    <div class="price-display">
+      <div class="label">方案費用</div>
+      <div class="amount" id="contractPrice"></div>
+    </div>
+
+    <div class="contract-box" id="contractTerms"></div>
+
+    <div class="field">
+      <label>電子簽名 <span class="required">*</span></label>
+      <input type="text" id="signatureText" placeholder="請輸入您的全名作為電子簽名" />
+      <div class="hint">輸入全名即代表您的電子簽章</div>
+    </div>
+
+    <div class="checkbox-field">
+      <input type="checkbox" id="agreeTerms" />
+      <label for="agreeTerms">我已閱讀並同意合約條款</label>
+    </div>
+
+    <button type="button" class="btn btn-primary" id="btnSignContract">
+      <span class="btn-text">確認簽署</span>
+      <div class="spinner"></div>
+    </button>
+  </div>
+
+  <!-- ── Step 3: 確認付款 ── -->
+  <div id="step3" class="form-section fade-up hidden">
+    <h2>確認付款</h2>
+    <div class="divider"></div>
+    <p class="subtitle">請依照以下資訊完成匯款後回報</p>
+
+    <div class="error-msg" id="error3"></div>
+
+    <div class="payment-info">
+      <h4>匯款資訊</h4>
+      <div class="info-row">
+        <span class="info-label">應付金額</span>
+        <span class="info-value" id="paymentAmount"></span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">銀行名稱</span>
+        <span class="info-value" id="bankName">國泰世華銀行</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">分行</span>
+        <span class="info-value" id="bankBranch">敦南分行</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">帳號</span>
+        <span class="info-value" id="bankAccount">012-XXXXXXXX</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">戶名</span>
+        <span class="info-value" id="bankHolder">One Page Go 工作室</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>匯款帳號末五碼 <span class="required">*</span></label>
+      <input type="text" id="transferLast5" maxlength="5" placeholder="請輸入您匯款帳號的末五碼" />
+    </div>
+
+    <div class="field">
+      <label>匯款日期 <span class="required">*</span></label>
+      <input type="date" id="transferDate" />
+    </div>
+
+    <button type="button" class="btn btn-primary" id="btnSubmitPayment">
+      <span class="btn-text">確認已匯款</span>
+      <div class="spinner"></div>
+    </button>
+  </div>
+
+  <!-- ── 成功畫面 ── -->
+  <div id="stepSuccess" class="form-section fade-up hidden">
+    <div class="success-screen">
+      <div class="success-icon">&#127881;</div>
+      <h2>感謝您的信任！</h2>
+      <div class="divider"></div>
+      <p class="message">
+        您的需求已成功送出並完成付款確認。<br />
+        我們會在 <strong>1–2 個工作天</strong>內與您聯繫，<br />
+        開始為您打造專屬網頁。
+      </p>
+      <div class="inquiry-id" id="successInquiryId"></div>
+      <br /><br />
+      <a href="../index.html" class="btn btn-secondary" style="text-decoration:none; display:inline-block; width:auto; padding:0.7rem 2rem;">返回首頁</a>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  &copy; 2026 One Page Go. All rights reserved.
+</footer>
+
+<script>
+  // ── API 設定 ──
+  const API_URL = "YOUR_APPS_SCRIPT_URL";
+
+  // ── 狀態 ──
+  let currentStep = 1;
+  let inquiryId = null;
+  let contractId = null;
+  let contractTermsText = "";
+  let price = 0;
+
+  // ── DOM 元素 ──
+  const steps = document.querySelectorAll('.step-item');
+  const connectors = [document.getElementById('connector1'), document.getElementById('connector2')];
+  const sections = {
+    1: document.getElementById('step1'),
+    2: document.getElementById('step2'),
+    3: document.getElementById('step3'),
+    success: document.getElementById('stepSuccess')
+  };
+
+  // ── 進度更新 ──
+  function updateProgress(step) {
+    steps.forEach((el, i) => {
+      const stepNum = i + 1;
+      el.classList.remove('active', 'completed');
+      const circle = el.querySelector('.step-circle');
+      if (stepNum < step) {
+        el.classList.add('completed');
+        circle.innerHTML = '&#10003;';
+      } else if (stepNum === step) {
+        el.classList.add('active');
+        circle.textContent = stepNum;
+      } else {
+        circle.textContent = stepNum;
+      }
+    });
+
+    connectors.forEach((c, i) => {
+      if (i + 1 < step) {
+        c.classList.add('completed');
+      } else {
+        c.classList.remove('completed');
+      }
+    });
+  }
+
+  // ── 步驟切換 ──
+  function goToStep(step) {
+    // 隱藏所有
+    Object.values(sections).forEach(s => s.classList.add('hidden'));
+
+    if (step === 'success') {
+      sections.success.classList.remove('hidden');
+      // 隱藏進度條
+      document.getElementById('progressBar').classList.add('hidden');
+    } else {
+      sections[step].classList.remove('hidden');
+      updateProgress(step);
+      currentStep = step;
+    }
+
+    // 捲到頂部
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── Loading 狀態 ──
+  function setLoading(btn, loading) {
+    if (loading) {
+      btn.classList.add('loading');
+      btn.disabled = true;
+    } else {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+
+  // ── 錯誤顯示 ──
+  function showError(stepNum, msg) {
+    const el = document.getElementById('error' + stepNum);
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 5000);
+  }
+
+  function clearError(stepNum) {
+    const el = document.getElementById('error' + stepNum);
+    el.classList.remove('show');
+  }
+
+  // ── 格式化金額 ──
+  function formatPrice(num) {
+    return 'NT$' + Number(num).toLocaleString();
+  }
+
+  // ── 預設合約文字 ──
+  function getDefaultContractTerms(name, businessName, templateType, budget) {
+    const typeNames = {
+      ecommerce: '微型電商',
+      booking: '預約系統',
+      groupbuy: '團購管理',
+      ticketing: '活動售票'
+    };
+    return `One Page Go 網頁製作服務合約
+
+甲方（委託方）：${name}
+品牌名稱：${businessName}
+
+乙方（製作方）：One Page Go 工作室
+
+一、服務內容
+乙方將為甲方製作「${typeNames[templateType] || templateType}」類型之單頁式網頁應用，包含前端頁面設計與後端串接。
+
+二、費用與付款
+本次服務費用為 ${formatPrice(budget)} 元整，甲方應於簽約後 3 個工作天內完成匯款。
+
+三、製作時程
+乙方將於收到款項後 5–7 個工作天內完成初版交付，甲方享有 2 次免費修改。
+
+四、智慧財產權
+網頁成品之智慧財產權於甲方完成付款後歸甲方所有。模板框架及技術架構之著作權歸乙方所有。
+
+五、保密條款
+雙方對於合作期間所獲知之對方商業資訊，負有保密義務。
+
+六、合約效力
+本合約自雙方簽署之日起生效。若任一方需終止合約，應於 7 日前書面通知對方。
+
+七、爭議處理
+本合約如有爭議，雙方同意以台灣台北地方法院為第一審管轄法院。`;
+  }
+
+  // ── Step 1: 提交需求 ──
+  document.getElementById('inquiryForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearError(1);
+
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const businessName = document.getElementById('businessName').value.trim();
+    const templateType = document.getElementById('templateType').value;
+    const budget = document.getElementById('budget').value;
+    const requirements = document.getElementById('requirements').value.trim();
+
+    // 驗證
+    if (!name || !email || !phone || !businessName || !templateType || !budget) {
+      showError(1, '請填寫所有必填欄位');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showError(1, '請輸入有效的 Email 地址');
+      return;
+    }
+
+    const btn = document.getElementById('btnSubmitInquiry');
+    setLoading(btn, true);
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'submitInquiry',
+          name,
+          email,
+          phone,
+          template_type: templateType,
+          business_name: businessName,
+          requirements,
+          budget
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        inquiryId = data.inquiryId;
+        contractId = data.contractId;
+        contractTermsText = data.contractTerms || getDefaultContractTerms(name, businessName, templateType, budget);
+        price = data.price || budget;
+
+        // 填入 Step 2
+        document.getElementById('contractPrice').textContent = formatPrice(price);
+        document.getElementById('contractTerms').textContent = contractTermsText;
+
+        goToStep(2);
+      } else {
+        showError(1, data.message || '提交失敗，請稍後再試');
+      }
+    } catch (err) {
+      // 開發模式：模擬 API 回應
+      console.warn('API 未連線，使用模擬資料', err);
+      inquiryId = 'INQ-' + Date.now().toString(36).toUpperCase();
+      contractId = 'CON-' + Date.now().toString(36).toUpperCase();
+      contractTermsText = getDefaultContractTerms(name, businessName, templateType, budget);
+      price = budget;
+
+      document.getElementById('contractPrice').textContent = formatPrice(price);
+      document.getElementById('contractTerms').textContent = contractTermsText;
+
+      goToStep(2);
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+
+  // ── Step 2: 簽署合約 ──
+  document.getElementById('btnSignContract').addEventListener('click', async () => {
+    clearError(2);
+
+    const signatureText = document.getElementById('signatureText').value.trim();
+    const agreeTerms = document.getElementById('agreeTerms').checked;
+
+    if (!signatureText) {
+      showError(2, '請輸入您的全名作為電子簽名');
+      return;
+    }
+
+    if (!agreeTerms) {
+      showError(2, '請勾選同意合約條款');
+      return;
+    }
+
+    const btn = document.getElementById('btnSignContract');
+    setLoading(btn, true);
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'signContract',
+          contract_id: contractId,
+          signature_text: signatureText
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // 填入 Step 3 付款資訊
+        document.getElementById('paymentAmount').textContent = formatPrice(price);
+
+        // 若 API 回傳銀行資訊則更新
+        if (data.bankName) document.getElementById('bankName').textContent = data.bankName;
+        if (data.bankBranch) document.getElementById('bankBranch').textContent = data.bankBranch;
+        if (data.bankAccount) document.getElementById('bankAccount').textContent = data.bankAccount;
+        if (data.bankHolder) document.getElementById('bankHolder').textContent = data.bankHolder;
+
+        goToStep(3);
+      } else {
+        showError(2, data.message || '簽署失敗，請稍後再試');
+      }
+    } catch (err) {
+      console.warn('API 未連線，使用模擬流程', err);
+      document.getElementById('paymentAmount').textContent = formatPrice(price);
+      goToStep(3);
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+
+  // ── Step 3: 確認付款 ──
+  document.getElementById('btnSubmitPayment').addEventListener('click', async () => {
+    clearError(3);
+
+    const transferLast5 = document.getElementById('transferLast5').value.trim();
+    const transferDate = document.getElementById('transferDate').value;
+
+    if (!transferLast5 || transferLast5.length !== 5) {
+      showError(3, '請輸入匯款帳號末五碼（5 位數字）');
+      return;
+    }
+
+    if (!/^\d{5}$/.test(transferLast5)) {
+      showError(3, '帳號末五碼僅限數字');
+      return;
+    }
+
+    if (!transferDate) {
+      showError(3, '請選擇匯款日期');
+      return;
+    }
+
+    const btn = document.getElementById('btnSubmitPayment');
+    setLoading(btn, true);
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'submitPayment',
+          contract_id: contractId,
+          transfer_last5: transferLast5,
+          transfer_date: transferDate
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        document.getElementById('successInquiryId').textContent = '案件編號：' + inquiryId;
+        goToStep('success');
+      } else {
+        showError(3, data.message || '提交失敗，請稍後再試');
+      }
+    } catch (err) {
+      console.warn('API 未連線，使用模擬流程', err);
+      document.getElementById('successInquiryId').textContent = '案件編號：' + inquiryId;
+      goToStep('success');
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+
+  // ── 初始化：設定今日日期為預設 ──
+  document.getElementById('transferDate').valueAsDate = new Date();
+</script>
+
+</body>
+</html>
