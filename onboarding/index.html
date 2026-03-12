@@ -1033,6 +1033,15 @@
     return '';
   }
 
+  function getAddonsValue() {
+    const tg = document.getElementById('addonTelegram').checked;
+    const line = document.getElementById('addonLine').checked;
+    const parts = [];
+    if (tg) parts.push('telegram');
+    if (line) parts.push('line');
+    return parts.join(',');
+  }
+
   function updatePriceSummary() {
     const templateType = document.getElementById('templateType').value;
     const summary = document.getElementById('priceSummary');
@@ -1220,15 +1229,7 @@
     const basePrice = TEMPLATE_PRICING[templateType] || 0;
     const addonTotal = getAddonTotal();
     const totalBudget = basePrice + addonTotal;
-    const addonLabel = getAddonLabel();
-    const addonTelegram = document.getElementById('addonTelegram').checked;
-    const addonLine = document.getElementById('addonLine').checked;
-
-    // 組合需求描述（包含加購資訊）
-    let fullRequirements = requirements;
-    if (addonLabel) {
-      fullRequirements += (requirements ? '\n' : '') + '【加購服務】' + addonLabel + '（+' + formatPrice(addonTotal) + '）';
-    }
+    const addonsValue = getAddonsValue(); // "telegram", "line", "telegram,line", ""
 
     const btn = document.getElementById('btnSubmitInquiry');
     setLoading(btn, true);
@@ -1244,8 +1245,9 @@
           phone,
           template_type: templateType,
           business_name: businessName,
-          requirements: fullRequirements,
+          requirements,
           budget: templateType,
+          addons: addonsValue,
           github_hosting: githubHosting,
           github_username: githubUsername || ''
         })
