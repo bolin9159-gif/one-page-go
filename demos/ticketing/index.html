@@ -463,10 +463,17 @@ let qty = 1;
 let emailVerified = false;
 let verifiedEmail = '';
 
+// ── Session Token ──
+function getSessionToken() { return sessionStorage.getItem('opg_session_token') || ''; }
+function saveSessionToken(t) { sessionStorage.setItem('opg_session_token', t); }
+
 // ── 載入活動 ────────────────────────────────────────
 async function loadEvents() {
   try {
-    const res  = await fetch(`${API_URL}?action=getEvents`);
+    const res  = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'getEvents' })
+    });
     const text = await res.text();
     const data = JSON.parse(text);
     events = data.events || [];
@@ -526,7 +533,10 @@ async function selectEvent(id) {
   container.innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
 
   try {
-    const res  = await fetch(`${API_URL}?action=getTicketTypes&event_id=${id}`, { redirect: 'follow' });
+    const res  = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'getTicketTypes', event_id: id })
+    });
     const text = await res.text();
     const data = JSON.parse(text);
     ticketTypes = data.ticketTypes || [];
@@ -671,6 +681,7 @@ async function verifyEmail() {
     if (data.success) {
       emailVerified = true;
       verifiedEmail = email;
+      if (data.sessionToken) saveSessionToken(data.sessionToken);
       showVerified();
     } else {
       showError(data.error || '驗證失敗');
@@ -719,6 +730,7 @@ async function submitOrder() {
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
         action: 'submitTicketOrder',
+        sessionToken: getSessionToken(),
         email: verifiedEmail,
         name,
         phone,

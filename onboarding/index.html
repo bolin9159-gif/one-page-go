@@ -1109,6 +1109,7 @@
   // ── API 設定 ──
   const API_URL = "https://script.google.com/macros/s/AKfycbyryJRwHkIVrVPP2Nh_fIXGFbVPlaNQ6TkAF_snVH6XlYpceaLKYKQfjyXruzMSeGsc/exec";
 
+
   // ── 定價對照 ──
   const TEMPLATE_PRICING = {
     ecommerce: 1000,
@@ -1122,6 +1123,14 @@
     line: 200,
     combo: 250  // 雙通知組合價
   };
+
+  // ── Session Token 工具 ──
+  function getSessionToken() {
+    return sessionStorage.getItem('opg_session_token') || '';
+  }
+  function saveSessionToken(token) {
+    sessionStorage.setItem('opg_session_token', token);
+  }
 
   // ── 狀態 ──
   let currentStep = 1;
@@ -1417,7 +1426,10 @@
     btn.textContent = '發送中...';
 
     try {
-      const res = await fetch(API_URL + '?action=sendVerifyCode&email=' + encodeURIComponent(email), { redirect: 'follow' });
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'sendVerifyCode', email })
+      });
       const text = await res.text();
       const data = JSON.parse(text);
       if (data.success) {
@@ -1472,6 +1484,7 @@
       const data = await res.json();
       if (data.success) {
         emailVerified = true;
+        if (data.sessionToken) saveSessionToken(data.sessionToken);
         document.getElementById('verifyStatus').textContent = '驗證成功';
         document.getElementById('verifyStatus').style.color = 'var(--green)';
         document.getElementById('email').disabled = true;
@@ -1553,6 +1566,7 @@
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           action: 'submitInquiry',
+          sessionToken: getSessionToken(),
           name,
           email,
           phone,
@@ -1573,7 +1587,17 @@
         inquiryId = data.inquiryId;
         contractId = data.contractId;
         price = totalBudget;
-        contractTermsText = data.contractTerms || getDefaultContractTerms(name, businessName, templateType, price);
+        // 用 getContract 取得合約內容（受 session token 保護）
+        try {
+          const conRes = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getContract', id: contractId, email: email, token: getSessionToken() })
+          });
+          const conData = await conRes.json();
+          contractTermsText = (conData.contract && conData.contract.terms) || getDefaultContractTerms(name, businessName, templateType, price);
+        } catch (e) {
+          contractTermsText = getDefaultContractTerms(name, businessName, templateType, price);
+        }
 
         // 填入 Step 2
         document.getElementById('contractPrice').textContent = formatPrice(price);
@@ -1638,7 +1662,9 @@
         body: JSON.stringify({
           action: 'signContract',
           contract_id: contractId,
-          signature_text: signatureText
+          signature_text: signatureText,
+          email: document.getElementById('email').value.trim().toLowerCase(),
+          sessionToken: getSessionToken()
         })
       });
 
@@ -1713,7 +1739,9 @@
           action: 'submitPayment',
           contract_id: contractId,
           transfer_last5: transferLast5,
-          transfer_date: transferDate
+          transfer_date: transferDate,
+          email: document.getElementById('email').value.trim().toLowerCase(),
+          sessionToken: getSessionToken()
         })
       });
 
@@ -1842,7 +1870,10 @@
     btn.textContent = '發送中...';
 
     try {
-      const res = await fetch(API_URL + '?action=sendVerifyCode&email=' + encodeURIComponent(email) + '&purpose=tracking', { redirect: 'follow' });
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'sendVerifyCode', email: email, purpose: 'tracking' })
+      });
       const text = await res.text();
       const data = JSON.parse(text);
       if (data.success) {
@@ -1897,6 +1928,7 @@
       if (data.success) {
         trackEmailVerified = true;
         trackEmail = email;
+        if (data.sessionToken) saveSessionToken(data.sessionToken);
         document.getElementById('trackVerifyStatus').textContent = '驗證成功';
         document.getElementById('trackVerifyStatus').style.color = 'var(--green)';
         document.getElementById('trackEmail').disabled = true;
@@ -1930,7 +1962,10 @@
     container.classList.remove('hidden');
 
     try {
-      const res = await fetch(API_URL + '?action=getMyInquiries&email=' + encodeURIComponent(email), { redirect: 'follow' });
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'getMyInquiries', email: email, token: getSessionToken() })
+      });
       const text = await res.text();
       const data = JSON.parse(text);
       renderInquiryList(data.inquiries || []);
@@ -2005,7 +2040,10 @@
   async function trackSignContract(conId) {
     contractId = conId;
     try {
-      const res = await fetch(API_URL + '?action=getContract&id=' + encodeURIComponent(conId), { redirect: 'follow' });
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'getContract', id: conId, email: trackEmail, token: getSessionToken() })
+      });
       const text = await res.text();
       const data = JSON.parse(text);
 
@@ -2031,7 +2069,10 @@
   async function trackSubmitPayment(conId) {
     contractId = conId;
     try {
-      const res = await fetch(API_URL + '?action=getPaymentInfo&id=' + encodeURIComponent(conId), { redirect: 'follow' });
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'getPaymentInfo', id: conId, email: trackEmail, token: getSessionToken() })
+      });
       const text = await res.text();
       const data = JSON.parse(text);
 
@@ -2070,7 +2111,7 @@
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'cancelInquiry', inquiry_id: inqId, email: trackEmail })
+        body: JSON.stringify({ action: 'cancelInquiry', inquiry_id: inqId, email: trackEmail, sessionToken: getSessionToken() })
       });
       const data = await res.json();
 

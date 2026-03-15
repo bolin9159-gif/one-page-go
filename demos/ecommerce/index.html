@@ -481,11 +481,16 @@
 // ── 設定你的 Apps Script 網址 ──────────────────────────
 const API_URL = "https://script.google.com/macros/s/AKfycbxQWWF38lw7KPXn658C43fREy-hdKNAb3r_xaqPEDRADP9an0pipbDFcHVp8bUl2bkE/exec";
 
+
 // ── 資料 ─────────────────────────────────────────────
 let products = [];
 let cart     = {};
 let emailVerified = false;
 let verifiedEmail = "";
+
+// ── Session Token ──
+function getSessionToken() { return sessionStorage.getItem('opg_session_token') || ''; }
+function saveSessionToken(t) { sessionStorage.setItem('opg_session_token', t); }
 
 // ── 初始化 ────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
@@ -501,7 +506,10 @@ function setMinDate() {
 // ── 載入商品 ──────────────────────────────────────────
 async function loadProducts() {
   try {
-    const res  = await fetch(`${API_URL}?action=getProducts`);
+    const res  = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'getProducts' })
+    });
     const data = await res.json();
     products = data.products || [];
     renderProducts();
@@ -652,11 +660,8 @@ async function sendCode() {
     }
 
     if (checkData.exists && checkData.verified) {
-      // 已驗證過，直接通過
-      emailVerified = true;
-      verifiedEmail = email;
-      showVerified();
-      return;
+      // 已驗證過，但仍需驗證碼以取得 session token
+      // 繼續往下走發送驗證碼流程
     }
 
     // 發送驗證碼
@@ -717,6 +722,7 @@ async function verifyEmail() {
     if (data.success && data.verified) {
       emailVerified = true;
       verifiedEmail = email;
+      if (data.sessionToken) saveSessionToken(data.sessionToken);
       showVerified();
     } else {
       statusEl.innerHTML = `<div class="error-msg" style="margin-top:0.5rem">${data.error || '驗證失敗'}</div>`;
@@ -769,6 +775,7 @@ async function submitOrder() {
       method: 'POST',
       body: JSON.stringify({
         action: 'submitOrder',
+        sessionToken: getSessionToken(),
         email: verifiedEmail,
         customerName: name,
         phone: phone.replace(/[-\s]/g, ''),

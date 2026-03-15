@@ -435,10 +435,17 @@ let emailVerified = false;
 let verifiedEmail = '';
 let countdownTimers = [];
 
+// ── Session Token ──
+function getSessionToken() { return sessionStorage.getItem('opg_session_token') || ''; }
+function saveSessionToken(t) { sessionStorage.setItem('opg_session_token', t); }
+
 // ── 載入團購活動 ─────────────────────────────────────
 async function loadCampaigns() {
   try {
-    const res  = await fetch(`${API_URL}?action=getCampaigns`);
+    const res  = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'getCampaigns' })
+    });
     const text = await res.text();
     const data = JSON.parse(text);
     campaigns = data.campaigns || [];
@@ -659,6 +666,7 @@ async function verifyEmail() {
     if (data.success) {
       emailVerified = true;
       verifiedEmail = email;
+      if (data.sessionToken) saveSessionToken(data.sessionToken);
       showVerified();
     } else {
       showError(data.error || '驗證失敗');
@@ -707,6 +715,7 @@ async function submitOrder() {
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
         action: 'submitGroupOrder',
+        sessionToken: getSessionToken(),
         email: verifiedEmail,
         name,
         phone,

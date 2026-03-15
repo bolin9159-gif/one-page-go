@@ -1085,7 +1085,11 @@
             };
 
             Object.entries(DEMO_APIS).forEach(([key, url]) => {
-                fetch(`${url}?action=getStats`)
+                fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "getStats" })
+                })
                     .then(r => r.json())
                     .then(data => {
                         const el = document.getElementById(`stat-${key}`);

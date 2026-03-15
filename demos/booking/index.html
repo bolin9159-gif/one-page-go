@@ -421,10 +421,17 @@ let selectedTime = '';
 let emailVerified = false;
 let verifiedEmail = '';
 
+// ── Session Token ──
+function getSessionToken() { return sessionStorage.getItem('opg_session_token') || ''; }
+function saveSessionToken(t) { sessionStorage.setItem('opg_session_token', t); }
+
 // ── 載入服務 ──────────────────────────────────────────
 async function loadServices() {
   try {
-    const res  = await fetch(`${API_URL}?action=getServices`);
+    const res  = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'getServices' })
+    });
     const text = await res.text();
     const data = JSON.parse(text);
     services = data.services || [];
@@ -498,7 +505,10 @@ document.getElementById('booking-date').addEventListener('change', async functio
   grid.innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
 
   try {
-    const res  = await fetch(`${API_URL}?action=getTimeSlots&date=${selectedDate}`, { redirect: 'follow' });
+    const res  = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'getTimeSlots', date: selectedDate })
+    });
     const text = await res.text();
     const data = JSON.parse(text);
     const slots = data.slots || [];
@@ -615,6 +625,7 @@ async function verifyEmail() {
     if (data.success) {
       emailVerified = true;
       verifiedEmail = email;
+      if (data.sessionToken) saveSessionToken(data.sessionToken);
       showVerified();
     } else {
       showError(data.error || '驗證失敗');
@@ -663,6 +674,7 @@ async function submitBooking() {
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
         action: 'submitBooking',
+        sessionToken: getSessionToken(),
         email: verifiedEmail,
         name,
         phone,
